@@ -1,11 +1,11 @@
 from RobotSide.Subsystems.multiplexer import Multiplexer
+from RobotSide.Utils.baseEncoder import baseEncoder
 
 
-class encoder:
+class absoluteEncoder(baseEncoder):
     def __init__(self, channel,multiplexer:Multiplexer):
-        self.channel = channel
-        self.position = 0
-        self.multiplexer = multiplexer
+
+        super().__init__(channel, multiplexer)
         try:
             self.multiplexer.add_device(channel)
         except ValueError as e:
