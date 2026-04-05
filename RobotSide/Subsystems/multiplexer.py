@@ -43,11 +43,14 @@ class Multiplexer:
         return data
     
     def getEncoderData(self, channel):
+        data = 0
         if self.devices[channel] == 1:
             self.select_channel(channel)
-            return self.read_encoder_data()
+            data = self.read_encoder_data()
         else:
             raise ValueError(f"No device on channel {channel}")
+        
+        return data
     
     def read_encoder_data(self):
 
