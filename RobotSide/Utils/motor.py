@@ -1,16 +1,15 @@
 import enum
-from json import encoder
 from gpiozero import PWMOutputDevice
 import time
-from simple_pid import PID
 from RobotSide.Utils.absoluteEncoder import absoluteEncoder
+from wpimath.controller import PIDController
 
 class pidTypes(enum.Enum):
     POSITION = 1
     VELOCITY = 2
 
 class motor():
-    def __init__(self, pin, encoder: absoluteEncoder, pidController:PID | PID = PID(1,0,0,0), pidType:pidTypes = pidTypes.POSITION):
+    def __init__(self, pin, encoder: absoluteEncoder, pidController: PIDController | PIDController = PIDController(1,0,0), pidType:pidTypes = pidTypes.POSITION):
 
         self.encoder = encoder
         self.motor = PWMOutputDevice(pin,frequency=50)
@@ -19,6 +18,7 @@ class motor():
 
         self.pidType = pidType
 
+        self.timeElapsed = 0
         if self.encoder is not None:
             self.encoderEnabled = True
         else:
@@ -27,17 +27,27 @@ class motor():
     def setSpeed(self, speed):
         self.motor.value = speed
 
-    def setSetpoint(self, setpoint):
-        self.pidController.setpoint = setpoint
+    def getSpeed(self):
+        #fix this when velocity control is implemented
+        return 0
 
-    def update(self):
+    def update(self, setpoint):
         if self.encoderEnabled:
+            self.encoder.updatePosition()
             if self.pidType == pidTypes.POSITION:
-                output = self.pidController(self.encoder.getPosition())
+                output = self.pidController.calculate(setpoint, self.encoder.getPosition())
                 self.setSpeed(output)
             else:
-                #TODO: implement velocity control
-                pass
+                elapsed_time = time.time() - self.lastUpdateTime  # calculate time elapsed since last update
+                previous_position = self.encoder.getTotalPosition()  # get position before updating
+                
+                self.encoder.updatePosition()
+                current_position = self.encoder.getTotalPosition()  # get updated position
+                
+                self.lastUpdateTime = time.time()
+                self.velocity = (current_position - previous_position) / elapsed_time if elapsed_time > 0 else 0  # calculate velocity
+                output = self.pidController.calculate(setpoint, self.velocity)
+                self.setSpeed(output)
         else:
             raise ValueError("Encoder not enabled for this motor")
 

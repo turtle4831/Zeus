@@ -24,7 +24,7 @@ class SwerveKinematics:
         C = vy - omega * (self.trackwidth / self.radius)
         D = vy + omega * (self.trackwidth / self.radius)
 
-        speeds = [ #multiply the speeds by 95% meter per second of the robot
+        speeds = [ 
             (B ** 2 + D ** 2) ** 0.5,
             (B ** 2 + C ** 2) ** 0.5,
             (A ** 2 + D ** 2) ** 0.5,
