@@ -1,0 +1,48 @@
+from wpimath.controller import PIDController
+
+from RobotSide.Utils.absoluteEncoder import absoluteEncoder
+from RobotSide.Utils.motor import motor, pidTypes
+
+
+class Turret:
+    def __init__(self, TurretMotorId: int, encoder: absoluteEncoder, maxDegrees: float = 180):
+        if maxDegrees <= 0:
+            raise ValueError("maxDegrees must be greater than 0")
+
+        self.maxDegrees = maxDegrees
+        self.targetAngle = 0
+        self.angleController = PIDController(1, 0, 0)
+        self.motor = motor(TurretMotorId, encoder, self.angleController, pidType=pidTypes.POSITION)
+
+    def setTargetAngle(self, angle: float):
+        self.targetAngle = self._wrapAngle(angle)
+
+    def getTargetAngle(self):
+        return self.targetAngle
+
+    def getCurrentAngle(self):
+        return self._wrapAngle(self.motor.encoder.getPosition())
+
+    def setMaxDegrees(self, maxDegrees: float):
+        if maxDegrees <= 0:
+            raise ValueError("maxDegrees must be greater than 0")
+
+        self.maxDegrees = maxDegrees
+        self.targetAngle = self._wrapAngle(self.targetAngle)
+
+    def update(self):
+        self.motor.update(self.targetAngle)
+
+    def stop(self):
+        self.motor.setSpeed(0)
+
+    def _wrapAngle(self, angle: float):
+        fullRange = self.maxDegrees * 2
+
+        while angle > self.maxDegrees:
+            angle -= fullRange
+
+        while angle < -self.maxDegrees:
+            angle += fullRange
+
+        return angle

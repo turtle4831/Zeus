@@ -21,14 +21,17 @@ class Feeder:
 
     def getSpeed(self):
         return self.motor.getSpeed()
+    
+    def setState(self, state):
+        self.state = state
 
     def update(self):
         match (self.state):
-            case self.state.SHOOTING:
+            case FeederState.SHOOTING:
                 self.motor.update(1)    
-            case self.state.INTAKING:
+            case FeederState.INTAKING:
                 self.motor.update(-0.5)
-            case self.state.STOP:
+            case FeederState.STOP:
                 self.motor.update(0)
             case _:
                 self.motor.setSpeed(0)
