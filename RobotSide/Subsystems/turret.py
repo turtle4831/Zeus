@@ -1,3 +1,5 @@
+import math
+
 from wpimath.controller import PIDController
 
 from RobotSide.Utils.absoluteEncoder import absoluteEncoder
@@ -16,6 +18,19 @@ class Turret:
 
     def setTargetAngle(self, angle: float):
         self.targetAngle = self._wrapAngle(angle)
+
+    def aimAtPoint(self, currentTurretPosition: list[float], targetPosition: list[float]):
+        self._validatePoint(currentTurretPosition, "currentTurretPosition")
+        self._validatePoint(targetPosition, "targetPosition")
+
+        deltaX = targetPosition[0] - currentTurretPosition[0]
+        deltaY = targetPosition[1] - currentTurretPosition[1]
+
+        if deltaX == 0 and deltaY == 0:
+            raise ValueError("targetPosition must be different from currentTurretPosition")
+
+        targetAngle = math.degrees(math.atan2(deltaY, deltaX))
+        self.setTargetAngle(targetAngle)
 
     def getTargetAngle(self):
         return self.targetAngle
@@ -46,3 +61,7 @@ class Turret:
             angle += fullRange
 
         return angle
+
+    def _validatePoint(self, point: list[float], name: str):
+        if len(point) != 2:
+            raise ValueError(f"{name} must contain exactly two values: [x, y]")

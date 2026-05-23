@@ -304,6 +304,51 @@ def test_turret_wraps_angles_and_updates_motor(monkeypatch):
     assert subsystem.motor.speed == 0
 
 
+def test_turret_aims_at_point(monkeypatch):
+    from RobotSide.Subsystems import turret
+
+    monkeypatch.setattr(turret, "motor", FakeMotor)
+
+    subsystem = turret.Turret(8, FakeEncoder(), maxDegrees=180)
+
+    subsystem.aimAtPoint([0.0, 0.0], [1.0, 0.0])
+    assert subsystem.getTargetAngle() == 0
+
+    subsystem.aimAtPoint([0.0, 0.0], [0.0, 1.0])
+    assert subsystem.getTargetAngle() == 90
+
+    subsystem.aimAtPoint([0.0, 0.0], [0.0, -1.0])
+    assert subsystem.getTargetAngle() == -90
+
+    subsystem.aimAtPoint([0.0, 0.0], [-1.0, 0.0])
+    assert subsystem.getTargetAngle() == 180
+
+
+def test_turret_aim_at_point_uses_angle_wrapping(monkeypatch):
+    from RobotSide.Subsystems import turret
+
+    monkeypatch.setattr(turret, "motor", FakeMotor)
+
+    subsystem = turret.Turret(8, FakeEncoder(), maxDegrees=90)
+    subsystem.aimAtPoint([0.0, 0.0], [-1.0, 0.0])
+
+    assert subsystem.getTargetAngle() == 0
+
+
+def test_turret_aim_at_point_rejects_invalid_points(monkeypatch):
+    from RobotSide.Subsystems import turret
+
+    monkeypatch.setattr(turret, "motor", FakeMotor)
+
+    subsystem = turret.Turret(8, FakeEncoder())
+
+    with pytest.raises(ValueError, match="exactly two values"):
+        subsystem.aimAtPoint([0.0], [1.0, 1.0])
+
+    with pytest.raises(ValueError, match="different"):
+        subsystem.aimAtPoint([1.0, 1.0], [1.0, 1.0])
+
+
 def test_turret_rejects_invalid_max_degrees(monkeypatch):
     from RobotSide.Subsystems import turret
 
