@@ -1,0 +1,84 @@
+# Zeus Robot
+
+This repo contains the robot-side code and a PyQt6 driver station for controlling the robot from a laptop over the robot's Wi-Fi hotspot.
+
+## Setup
+
+From the project root:
+
+```bash
+cd Zeus
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+If the virtual environment already exists, just activate it before running commands:
+
+```bash
+cd Zeus
+source .venv/bin/activate
+```
+
+## Start The Robot
+
+Run this on the robot after it has created its hotspot:
+
+```bash
+cd Zeus
+source .venv/bin/activate
+python robot.py
+```
+
+The robot starts a driver station server on TCP port `5800`. It listens for controller inputs from the laptop and sends telemetry back to the driver station.
+
+## Start The Driver Station
+
+Connect the laptop to the robot's hotspot, then run:
+
+```bash
+cd Zeus
+source .venv/bin/activate
+python DriverStation/driver_station.py
+```
+
+In the driver station window:
+
+1. Set `Robot IP` to the robot hotspot IP address.
+2. Leave `Port` as `5800` unless the robot code was changed.
+3. Click `Connect`.
+
+The default robot IP in the UI is `192.168.4.1`. Change it if your hotspot uses a different address.
+
+## Controls And Telemetry
+
+The driver station reads a DualSense controller through `pydualsense` and sends control packets to the robot at about `50 Hz`.
+
+The robot sends telemetry back at about `10 Hz`, including connection status, robot state, subsystem state text, and battery voltage if the robot code provides it.
+
+If the robot stops receiving control packets for more than `0.25` seconds, it falls back to disabled zeroed controls.
+
+## Run Tests
+
+ROS can add broken pytest plugins to the Python path on this machine, so run tests with plugin autoload disabled:
+
+```bash
+cd Zeus
+source .venv/bin/activate
+PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 pytest
+```
+
+## Troubleshooting
+
+If the driver station cannot connect:
+
+- Make sure the laptop is connected to the robot hotspot.
+- Confirm the robot process is running with `python robot.py`.
+- Check that the driver station IP matches the robot hotspot IP.
+- Make sure port `5800` is not blocked by a firewall.
+
+If the controller does not work:
+
+- Make sure the DualSense controller is connected to the laptop.
+- Restart the driver station after connecting the controller.
+- Check that `pydualsense` installed successfully in the active virtual environment.
