@@ -3,5 +3,7 @@ robotpy[commands2]==2026.2.2
 
 gpiozero
 PySimpleGUI
+PyQt6
 pydualsense
 smbus
+pytest
