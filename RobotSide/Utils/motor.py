@@ -28,9 +28,8 @@ class motor():
         self.motor.value = speed
 
     def getSpeed(self):
-        #fix this when velocity control is implemented
-        return 0
-
+        return self.velocity
+        
     def update(self, setpoint):
         if self.encoderEnabled:
             self.encoder.updatePosition()

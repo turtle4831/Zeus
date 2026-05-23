@@ -1,0 +1,7 @@
+# RobotPy version is mirrored from Zeus/pyproject.toml.
+robotpy[commands2]==2026.2.2
+
+gpiozero
+PySimpleGUI
+pydualsense
+smbus
