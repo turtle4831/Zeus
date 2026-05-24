@@ -8,5 +8,6 @@ print("Test 1 - Straight Forward")
 print("Speeds:", speeds)
 print("Angles:", angles)
 
-for i in range(4000):
-    print(swerveDrive.getPoseEstimation((speeds, angles), 0))
+moduleStates = list(zip(speeds, angles))
+for i in range(10):
+    print(swerveDrive.getPoseEstimation(moduleStates, 0, deltaTime=0.02))
