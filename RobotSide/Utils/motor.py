@@ -8,7 +8,7 @@ class pidTypes(enum.Enum):
     POSITION = 1
     VELOCITY = 2
 
-class motor():
+class Motor():
     def __init__(self, pin, encoder: absoluteEncoder, pidController: PIDController | PIDController = PIDController(1,0,0), pidType:pidTypes = pidTypes.POSITION):
 
         self.encoder = encoder
@@ -59,3 +59,4 @@ class motor():
     
 
     
+motor = Motor

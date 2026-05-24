@@ -1,13 +1,13 @@
 from wpimath.controller import PIDController
 
-from RobotSide.Utils.motor import motor
+from RobotSide.Utils.motor import Motor
 
 
 class Swerve:
-    def __init__(self, drive_motor:motor, turn_motor:motor, encoderId):
+    def __init__(self, drive_motor: Motor, turn_motor: Motor):
         self.drive_motor = drive_motor
         self.turn_motor = turn_motor
-        self.encoder = encoderId
+       
 
     def set_speed(self, speed):
         #PLEASE REMEMBER TO SET THE DRIVE MOTOR TO VELOCITY CONTROL MODE IN THE ROBOT CLASS
@@ -21,5 +21,5 @@ class Swerve:
         self.set_angle(angle)
 
     def getState(self):
-        return self.drive_motor.getSpeed(), self.encoder.getPosition()
+        return self.drive_motor.getSpeed(), self.turn_motor.getPosition()
 

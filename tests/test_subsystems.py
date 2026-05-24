@@ -67,6 +67,14 @@ class FakeEncoder:
         return self.position
 
 
+class FakeBeamBreak:
+    def __init__(self, interrupted=False):
+        self.interrupted = interrupted
+
+    def isInterrupted(self):
+        return self.interrupted
+
+
 @pytest.fixture(autouse=True)
 def reset_fakes():
     FakeMotor.instances = []
@@ -76,9 +84,9 @@ def reset_fakes():
 def test_feeder_updates_motor_for_each_state(monkeypatch):
     from RobotSide.Subsystems import feeder
 
-    monkeypatch.setattr(feeder, "motor", FakeMotor)
+    monkeypatch.setattr(feeder, "Motor", FakeMotor)
 
-    subsystem = feeder.Feeder(1, FakeEncoder())
+    subsystem = feeder.Feeder(1, FakeEncoder(), FakeBeamBreak(), FakeBeamBreak(), FakeBeamBreak())
     assert subsystem.state == feeder.FeederState.STOP
     assert FakeMotor.instances[0].pidType == feeder.pidTypes.VELOCITY
 
@@ -95,9 +103,9 @@ def test_feeder_updates_motor_for_each_state(monkeypatch):
 def test_feeder_stops_and_raises_for_invalid_state(monkeypatch):
     from RobotSide.Subsystems import feeder
 
-    monkeypatch.setattr(feeder, "motor", FakeMotor)
+    monkeypatch.setattr(feeder, "Motor", FakeMotor)
 
-    subsystem = feeder.Feeder(1, FakeEncoder())
+    subsystem = feeder.Feeder(1, FakeEncoder(), FakeBeamBreak(), FakeBeamBreak(), FakeBeamBreak())
     subsystem.state = "bad"
 
     with pytest.raises(ValueError):
@@ -109,7 +117,7 @@ def test_feeder_stops_and_raises_for_invalid_state(monkeypatch):
 def test_intake_controls_motor_and_pivot_servo(monkeypatch):
     from RobotSide.Subsystems import intake
 
-    monkeypatch.setattr(intake, "motor", FakeMotor)
+    monkeypatch.setattr(intake, "Motor", FakeMotor)
     monkeypatch.setattr(intake, "servo", FakeServo)
 
     subsystem = intake.Intake(2, FakeEncoder(), 3)
@@ -141,7 +149,7 @@ def test_intake_controls_motor_and_pivot_servo(monkeypatch):
 def test_intake_stops_and_raises_for_invalid_state(monkeypatch):
     from RobotSide.Subsystems import intake
 
-    monkeypatch.setattr(intake, "motor", FakeMotor)
+    monkeypatch.setattr(intake, "Motor", FakeMotor)
     monkeypatch.setattr(intake, "servo", FakeServo)
 
     subsystem = intake.Intake(2, FakeEncoder(), 3)
@@ -156,7 +164,7 @@ def test_intake_stops_and_raises_for_invalid_state(monkeypatch):
 def test_shooter_delegates_to_shooter_and_hood_motors(monkeypatch):
     from RobotSide.Subsystems import shooter
 
-    monkeypatch.setattr(shooter, "motor", FakeMotor)
+    monkeypatch.setattr(shooter, "Motor", FakeMotor)
 
     shooter_encoder = FakeEncoder(100)
     hood_encoder = FakeEncoder(25)
@@ -168,6 +176,13 @@ def test_shooter_delegates_to_shooter_and_hood_motors(monkeypatch):
 
     subsystem.setSpeed(0.75)
     assert subsystem.getSpeed() == 0.75
+    assert subsystem.atSpeed() is True
+
+    subsystem.shooterMotor.speed = 0.69
+    assert subsystem.atSpeed() is False
+
+    subsystem.shooterMotor.speed = 0.70
+    assert subsystem.atSpeed() is True
 
     subsystem.setHoodPosition(30)
     assert subsystem.hoodMotor.position == 30
@@ -181,14 +196,13 @@ def test_swerve_module_sets_drive_and_turn_state():
 
     drive_motor = FakeMotor(6)
     turn_motor = FakeMotor(7)
-    encoder = FakeEncoder(135)
-    module = Swerve(drive_motor, turn_motor, encoder)
+    module = Swerve(drive_motor, turn_motor)
 
     module.setState(3, 90)
 
     assert drive_motor.update_calls == [3]
     assert turn_motor.update_calls == [90]
-    assert module.getState() == (0, 135)
+    assert module.getState() == (0, 90)
 
 
 def test_swerve_drives_modules_and_tracks_pose(monkeypatch):
@@ -212,10 +226,9 @@ def test_swerve_drives_modules_and_tracks_pose(monkeypatch):
         def getPoseEstimation(self, states, gyroAngle):
             return (states, gyroAngle)
 
-    fake_module.SwerveKinematics = FakeKinematics
-    monkeypatch.setitem(sys.modules, "swerveKinematics", fake_module)
+    from RobotSide.Subsystems import swerve
 
-    from RobotSide.Subsystems.swerve import Swerve
+    monkeypatch.setattr(swerve, "SwerveKinematics", FakeKinematics)
 
     class FakeSwerveModule:
         def __init__(self):
@@ -229,7 +242,7 @@ def test_swerve_drives_modules_and_tracks_pose(monkeypatch):
 
     modules = [FakeSwerveModule() for _ in range(4)]
 
-    subsystem = Swerve(*modules)
+    subsystem = swerve.Swerve(*modules)
     subsystem.drive(1, 2, 3)
 
     assert [module.calls[-1] for module in modules] == [(1, 10), (2, 20), (3, 30), (4, 40)]
@@ -280,7 +293,7 @@ def test_multiplexer_selects_channels_and_reads_encoder_data(monkeypatch):
 def test_turret_wraps_angles_and_updates_motor(monkeypatch):
     from RobotSide.Subsystems import turret
 
-    monkeypatch.setattr(turret, "motor", FakeMotor)
+    monkeypatch.setattr(turret, "Motor", FakeMotor)
 
     encoder = FakeEncoder(200)
     subsystem = turret.Turret(8, encoder, maxDegrees=180)
@@ -307,7 +320,7 @@ def test_turret_wraps_angles_and_updates_motor(monkeypatch):
 def test_turret_aims_at_point(monkeypatch):
     from RobotSide.Subsystems import turret
 
-    monkeypatch.setattr(turret, "motor", FakeMotor)
+    monkeypatch.setattr(turret, "Motor", FakeMotor)
 
     subsystem = turret.Turret(8, FakeEncoder(), maxDegrees=180)
 
@@ -327,7 +340,7 @@ def test_turret_aims_at_point(monkeypatch):
 def test_turret_aim_at_point_uses_angle_wrapping(monkeypatch):
     from RobotSide.Subsystems import turret
 
-    monkeypatch.setattr(turret, "motor", FakeMotor)
+    monkeypatch.setattr(turret, "Motor", FakeMotor)
 
     subsystem = turret.Turret(8, FakeEncoder(), maxDegrees=90)
     subsystem.aimAtPoint([0.0, 0.0], [-1.0, 0.0])
@@ -338,7 +351,7 @@ def test_turret_aim_at_point_uses_angle_wrapping(monkeypatch):
 def test_turret_aim_at_point_rejects_invalid_points(monkeypatch):
     from RobotSide.Subsystems import turret
 
-    monkeypatch.setattr(turret, "motor", FakeMotor)
+    monkeypatch.setattr(turret, "Motor", FakeMotor)
 
     subsystem = turret.Turret(8, FakeEncoder())
 
@@ -352,7 +365,7 @@ def test_turret_aim_at_point_rejects_invalid_points(monkeypatch):
 def test_turret_rejects_invalid_max_degrees(monkeypatch):
     from RobotSide.Subsystems import turret
 
-    monkeypatch.setattr(turret, "motor", FakeMotor)
+    monkeypatch.setattr(turret, "Motor", FakeMotor)
 
     with pytest.raises(ValueError):
         turret.Turret(8, FakeEncoder(), maxDegrees=0)

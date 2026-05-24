@@ -82,3 +82,81 @@ If the controller does not work:
 - Make sure the DualSense controller is connected to the laptop.
 - Restart the driver station after connecting the controller.
 - Check that `pydualsense` installed successfully in the active virtual environment.
+
+## Fast Deploy To Robot
+
+For day-to-day development, you can use your laptop to deploy to the robot over SSH.
+
+### One-Time Setup
+
+On the robot, create the project directory and virtual environment once:
+
+```bash
+mkdir -p ~/ZeusRobot/Zeus
+cd ~/ZeusRobot/Zeus
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+On your laptop, make sure SSH works to the robot hotspot:
+
+```bash
+ssh robot@192.168.4.1
+```
+
+Set defaults so deploy commands are shorter:
+
+```bash
+export ZEUS_ROBOT_HOST=robot@192.168.4.1
+export ZEUS_ROBOT_PATH=~/ZeusRobot/Zeus
+```
+
+### Deploy Code
+
+From the laptop:
+
+```bash
+cd Zeus
+python scripts/deploy_robot.py
+```
+
+This syncs changed files with `rsync`, then restarts `robot.py` on the robot.
+
+Useful options:
+
+```bash
+# Preview what would be copied
+python scripts/deploy_robot.py --dry-run
+
+# Copy files without restarting robot.py
+python scripts/deploy_robot.py --sync-only
+
+# Copy files and reinstall dependencies on the robot
+python scripts/deploy_robot.py --install-deps
+```
+
+You can also pass values directly:
+
+```bash
+python scripts/deploy_robot.py --host robot@192.168.4.1 --remote-path ~/ZeusRobot/Zeus
+```
+
+### Verify Deploy
+
+After deploying, SSH into the robot and check:
+
+```bash
+pgrep -af robot.py
+tail -n 50 ~/ZeusRobot/Zeus/robot.log
+```
+
+### Deploy Troubleshooting
+
+If deploy fails:
+
+- Confirm the laptop is connected to the robot hotspot.
+- Confirm SSH works: `ssh $ZEUS_ROBOT_HOST`
+- Confirm the remote path exists and contains `.venv`.
+- If dependencies changed, rerun with `--install-deps`.
+- Use `--dry-run` first to verify the rsync target before copying files.

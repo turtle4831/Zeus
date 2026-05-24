@@ -1,5 +1,10 @@
-from swerveKinematics import SwerveKinematics
+from RobotSide.swerve.swerveKinematics import SwerveKinematics
+from enum import Enum
 
+class SwerveState(Enum):
+    IDLE = 1
+    DRIVING = 2
+    STOP = 3
 
 class Swerve:
     def __init__(self, front_left, front_right, back_left, back_right):

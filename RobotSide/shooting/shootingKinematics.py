@@ -3,8 +3,8 @@ class ShootingKinematics:
         # All of these constants need to be calibrated on the real robot.
         self.maxShootingSpeed = 6500  # rpm
         self.minShootingSpeed = 5000  # rpm
-        self.maxShootingAngle = 10  # degrees
-        self.minShootingAngle = 0  # degrees
+        self.maxShootingAngle = 45  # degrees
+        self.minShootingAngle = 10 # degrees
         self.maxShootingDistance = 10  # meters
         self.minShootingDistance = 0  # meters
         self.maxShootingHeight = 1  # meters
@@ -15,11 +15,11 @@ class ShootingKinematics:
 
         self.lookupTable = lookupTable or [
             # distance meters, shooter speed rpm, hood angle degrees, time of flight seconds
-            (0.0, 5000.0, 0.0, 0.10),
-            (2.5, 5400.0, 2.5, 0.25),
-            (5.0, 5800.0, 5.0, 0.45),
-            (7.5, 6150.0, 7.5, 0.65),
-            (10.0, 6500.0, 10.0, 0.85),
+            (0.0, 5000.0, 10.0, 0.10),
+            (2.5, 5400.0, 12.5, 0.25),
+            (5.0, 5800.0, 15.0, 0.45),
+            (7.5, 6150.0, 17.5, 0.65),
+            (10.0, 6500.0, 40.0, 0.85),
         ]
         self.lookupTable.sort(key=lambda row: row[0])
         self._validateLookupTable()

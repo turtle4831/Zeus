@@ -1,10 +1,15 @@
+import enum
 import math
 
 from wpimath.controller import PIDController
 
 from RobotSide.Utils.absoluteEncoder import absoluteEncoder
-from RobotSide.Utils.motor import motor, pidTypes
+from RobotSide.Utils.motor import Motor, pidTypes
 
+class TurretState(enum.Enum):
+    IDLE = 1
+    AIMING = 2
+    STOP = 3
 
 class Turret:
     def __init__(self, TurretMotorId: int, encoder: absoluteEncoder, maxDegrees: float = 180):
@@ -14,7 +19,7 @@ class Turret:
         self.maxDegrees = maxDegrees
         self.targetAngle = 0
         self.angleController = PIDController(1, 0, 0)
-        self.motor = motor(TurretMotorId, encoder, self.angleController, pidType=pidTypes.POSITION)
+        self.motor = Motor(TurretMotorId, encoder, self.angleController, pidType=pidTypes.POSITION)
 
     def setTargetAngle(self, angle: float):
         self.targetAngle = self._wrapAngle(angle)
