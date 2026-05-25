@@ -1,10 +1,13 @@
 # RobotPy version is mirrored from Zeus/pyproject.toml.
 robotpy[commands2]==2026.2.2
 
-gpiozero
 PySimpleGUI
 PyQt6
 pygame
 pydualsense
-smbus
 pytest
+
+# Robot hardware dependencies. These packages are not available on Windows,
+# and pip will abort the entire install if it tries to resolve them there.
+gpiozero; sys_platform == "linux"
+smbus; sys_platform == "linux"

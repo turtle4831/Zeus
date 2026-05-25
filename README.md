@@ -4,21 +4,47 @@ This repo contains the robot-side code and a PyQt6 driver station for controllin
 
 ## Setup
 
-From the project root:
+Use a virtual environment before installing dependencies.
+
+### Linux
 
 ```bash
 cd Zeus
 python3 -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+```
+
+### Windows
+
+From PowerShell:
+
+```powershell
+cd Zeus
+py -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
 ```
 
 If the virtual environment already exists, just activate it before running commands:
+
+Linux:
 
 ```bash
 cd Zeus
 source .venv/bin/activate
 ```
+
+Windows PowerShell:
+
+```powershell
+cd Zeus
+.\.venv\Scripts\Activate.ps1
+```
+
+`requirements.txt` is platform-aware. Windows installs the driver station, controller, test, and shared RobotPy dependencies, but skips Linux-only robot hardware packages such as `gpiozero` and `smbus`. Those hardware packages install on Linux and on the robot.
 
 ## Start The Robot
 
@@ -52,7 +78,7 @@ The default robot IP in the UI is `192.168.4.1`. Change it if your hotspot uses 
 
 ## Controls And Telemetry
 
-The driver station reads a DualSense controller through `pydualsense` and sends control packets to the robot at about `50 Hz`.
+The driver station reads a DualSense controller through `pygame` first, then falls back to `pydualsense`, and sends control packets to the robot at about `50 Hz`.
 
 The robot sends telemetry back at about `10 Hz`, including connection status, robot state, subsystem state text, and battery voltage if the robot code provides it.
 
@@ -60,12 +86,26 @@ If the robot stops receiving control packets for more than `0.25` seconds, it fa
 
 ## Run Tests
 
-ROS can add broken pytest plugins to the Python path on this machine, so run tests with plugin autoload disabled:
+After activating the virtual environment, run:
 
 ```bash
 cd Zeus
 source .venv/bin/activate
-PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 pytest
+python -m pytest
+```
+
+On Windows PowerShell:
+
+```powershell
+cd Zeus
+.\.venv\Scripts\Activate.ps1
+python -m pytest
+```
+
+ROS can add broken pytest plugins to the Python path on some Linux machines. If pytest fails while loading unrelated ROS plugins, run:
+
+```bash
+PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python -m pytest
 ```
 
 ## Troubleshooting
@@ -81,7 +121,8 @@ If the controller does not work:
 
 - Make sure the DualSense controller is connected to the laptop.
 - Restart the driver station after connecting the controller.
-- Check that `pydualsense` installed successfully in the active virtual environment.
+- Check that `pygame` can see the controller in the active virtual environment.
+- On Windows, confirm the controller appears in Bluetooth devices or Game Controllers before starting the driver station.
 
 ## Fast Deploy To Robot
 
