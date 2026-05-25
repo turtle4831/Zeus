@@ -11,3 +11,4 @@ pytest
 # and pip will abort the entire install if it tries to resolve them there.
 gpiozero; sys_platform == "linux"
 smbus; sys_platform == "linux"
+adafruit-circuitpython-bno055; sys_platform == "linux"

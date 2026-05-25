@@ -1,4 +1,5 @@
 import enum
+from tokenize import String
 
 from RobotSide.Subsystems.feeder import Feeder, FeederState
 from RobotSide.Subsystems.intake import Intake, IntakeState
@@ -71,9 +72,28 @@ class StateMachine:
    
     swerve = Swerve(frontLeftModule, frontRightModule, backLeftModule, backRightModule);
         
+    blueTargetLocation = list((9.0,9.0))
+    redTargetLocaiton = list((-9.0,-9.0))
 
-    def update(self, requestedStates:dict[str, str]):
+
+    def update(self, requestedStates:dict[str, str],redAlliance:bool, swerveRequest:list):
         stateRequests: dict[str, StateRequest] = {}
+
+        currentPosition = list(self.swerve.getPose())
+        gyroAngle = self.swerve.getGyroAngle()
+        if swerveRequest:
+            self.swerve.update(gyroAngle)
+            self.swerve.fieldCentricDrive(swerveRequest[0], swerveRequest[1], swerveRequest[2], gyroAngle)
+
+        if redAlliance:
+            targetPosition = self.redTargetLocaiton
+        else:
+            targetPosition = self.blueTargetLocation
+
+        self.turret.aimAtPoint(currentPosition, targetPosition)
+
+
+        self.turret.update()
 
         for subsystem, state in requestedStates.items(): #if state is requested stop, it needs to stop immediately
             stateRequests[subsystem] = StateRequest.PENDING
@@ -81,12 +101,10 @@ class StateMachine:
                 self.subsystem_states[subsystem] = "STOP"
                 stateRequests[subsystem] = StateRequest.ACCEPTED
 
-        if self.feeder.getBallCount() == 3:
+        if self.feeder.getBallCount() >= 1 and requestedStates["shooter"] == ("SHOOTING" or "PRE_SHOOTING"):
             self.feeder.setState(FeederState.IDLE)
-            self.intake.setState(IntakeState.PIVOT_UP)
             self.shooter.setState(ShooterState.PRE_SHOOTING)
             stateRequests["feeder"] = StateRequest.REJECTED
-            stateRequests["intake"] = StateRequest.REJECTED
         
         if self.shooter.atSpeed() and requestedStates["shooter"] == "SHOOTING":
             self.shooter.setState(ShooterState.SHOOTING)

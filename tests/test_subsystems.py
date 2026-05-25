@@ -306,9 +306,16 @@ def test_swerve_drives_modules_and_tracks_pose(monkeypatch):
         def getState(self):
             return self.calls[-1]
 
+    class FakeGyro:
+        def __init__(self):
+            self.angle = 180
+
+        def getAngle(self):
+            return self.angle
+
     modules = [FakeSwerveModule() for _ in range(4)]
 
-    subsystem = swerve.Swerve(*modules)
+    subsystem = swerve.Swerve(*modules, gyro=FakeGyro())
     assert subsystem.state == swerve.SwerveState.STOP
 
     subsystem.setState(swerve.SwerveState.DRIVING)
@@ -321,6 +328,11 @@ def test_swerve_drives_modules_and_tracks_pose(monkeypatch):
     subsystem.update(180)
     assert subsystem.states == [(1, 10), (2, 20), (3, 30), (4, 40)]
     assert subsystem.getPose() == (subsystem.states, 180)
+
+    subsystem.fieldCentricDrive(1, 0, 0, 90)
+    field_centric_states = [module.calls[-1] for module in modules]
+    assert [state[0] for state in field_centric_states] == pytest.approx([0, -1, 0, 4])
+    assert [state[1] for state in field_centric_states] == [10, 20, 30, 40]
 
     subsystem.resetPose(1, 2, 90)
     kinematics = cast(Any, subsystem.kinematics)
@@ -445,3 +457,23 @@ def test_turret_rejects_invalid_max_degrees(monkeypatch):
 
     with pytest.raises(ValueError):
         turret.Turret(8, fake_encoder(), maxDegrees=0)
+
+
+def test_gyro_reads_and_resets_heading_from_sensor():
+    from RobotSide.Utils.gyro import Gyro
+
+    class FakeSensor:
+        def __init__(self):
+            self.euler = (270, 0, 0)
+
+    sensor = FakeSensor()
+    gyro = Gyro(sensor=sensor)
+
+    assert gyro.available is True
+    assert gyro.getAngle() == -90
+
+    gyro.reset()
+    assert gyro.getAngle() == 0
+
+    sensor.euler = (10, 0, 0)
+    assert gyro.getAngle() == 100
