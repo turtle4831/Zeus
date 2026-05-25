@@ -46,6 +46,7 @@ class DriverStationWindow(QMainWindow):
         self._enabled = True
 
         self._build_ui()
+        self._start_controller()
         self.telemetry_received.connect(self._on_telemetry_ui)
         self.connection_changed.connect(self._on_connection_ui)
 
@@ -116,6 +117,16 @@ class DriverStationWindow(QMainWindow):
 
         self.statusBar().showMessage("Ready")
 
+    def _start_controller(self) -> None:
+        if self._controller.start():
+            self._controller_label.setText(
+                f"{self._controller.name} ({self._controller.backend})"
+            )
+            self.statusBar().showMessage(f"Controller detected: {self._controller.name}")
+        else:
+            self._controller_label.setText(f"Not found: {self._controller.last_error}")
+            self.statusBar().showMessage("Controller not found")
+
     def _toggle_connection(self) -> None:
         if self._connected:
             self._disconnect()
@@ -124,10 +135,7 @@ class DriverStationWindow(QMainWindow):
 
     def _connect(self) -> None:
         if not self._controller.available:
-            if not self._controller.start():
-                self.statusBar().showMessage("Controller not found; keyboard-only mode unavailable")
-        else:
-            self._controller_label.setText("DualSense connected")
+            self._start_controller()
 
         host = self._host_input.text().strip()
         port = int(self._port_input.text().strip())

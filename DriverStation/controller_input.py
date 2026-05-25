@@ -21,6 +21,7 @@ class ControllerInput:
         self._joystick = None
         self._available = False
         self._backend = "none"
+        self._name = "none"
         self._last_error = ""
 
     @property
@@ -35,11 +36,18 @@ class ControllerInput:
     def last_error(self) -> str:
         return self._last_error
 
+    @property
+    def name(self) -> str:
+        return self._name
+
     def start(self) -> bool:
-        if self._start_pydualsense():
+        if self._available:
             return True
 
         if self._start_pygame():
+            return True
+
+        if self._start_pydualsense():
             return True
 
         return False
@@ -52,10 +60,12 @@ class ControllerInput:
             self._controller.init()
             self._available = True
             self._backend = "pydualsense"
+            self._name = "DualSense"
             return True
         except Exception as exc:
             self._controller = None
             self._available = False
+            self._name = "none"
             self._last_error = f"pydualsense unavailable: {exc}"
             return False
 
@@ -74,11 +84,13 @@ class ControllerInput:
             self._joystick.init()
             self._available = True
             self._backend = "pygame"
+            self._name = self._joystick.get_name()
             return True
         except Exception as exc:
             self._pygame = None
             self._joystick = None
             self._available = False
+            self._name = "none"
             self._last_error = f"pygame unavailable: {exc}"
             return False
 
@@ -99,6 +111,7 @@ class ControllerInput:
         self._joystick = None
         self._available = False
         self._backend = "none"
+        self._name = "none"
 
     def read(self, enabled: bool = True) -> ControlMessage:
         if not self._available or self._controller is None:
