@@ -1,4 +1,9 @@
-from gpiozero import MCP3008
+try:
+    from gpiozero import MCP3008
+except ModuleNotFoundError:
+    class MCP3008:
+        def __init__(self, *args, **kwargs):
+            raise ModuleNotFoundError("No module named 'gpiozero'")
 
 
 class BeamBreak:

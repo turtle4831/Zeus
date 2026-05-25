@@ -1,4 +1,9 @@
-from gpiozero import AngularServo
+try:
+    from gpiozero import AngularServo
+except ModuleNotFoundError:
+    class AngularServo:
+        def __init__(self, *args, **kwargs):
+            raise ModuleNotFoundError("No module named 'gpiozero'")
 
 
 class servo:

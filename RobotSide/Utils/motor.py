@@ -1,8 +1,14 @@
 import enum
-from gpiozero import PWMOutputDevice
+try:
+    from gpiozero import PWMOutputDevice
+except ModuleNotFoundError:
+    class PWMOutputDevice:
+        def __init__(self, *args, **kwargs):
+            raise ModuleNotFoundError("No module named 'gpiozero'")
+
 import time
 from RobotSide.Utils.absoluteEncoder import absoluteEncoder
-from wpimath.controller import PIDController
+from RobotSide.Utils.pid import PIDController
 
 class pidTypes(enum.Enum):
     POSITION = 1

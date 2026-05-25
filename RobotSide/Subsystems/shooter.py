@@ -1,8 +1,8 @@
 import enum
 import math
-from wpimath.controller import PIDController
-from Zeus.RobotSide.Utils.motor import Motor, pidTypes
-from Zeus.RobotSide.Utils.absoluteEncoder import absoluteEncoder
+from RobotSide.Utils.pid import PIDController
+from RobotSide.Utils.motor import Motor, pidTypes
+from RobotSide.Utils.absoluteEncoder import absoluteEncoder
 
 class ShooterState(enum.Enum):
     SHOOTING = 1

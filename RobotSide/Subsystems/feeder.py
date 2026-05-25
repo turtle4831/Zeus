@@ -1,8 +1,8 @@
 import enum
-from wpimath.controller import PIDController
+from RobotSide.Utils.pid import PIDController
 from RobotSide.Utils.motor import Motor, pidTypes
-from Zeus.RobotSide.Utils.absoluteEncoder import absoluteEncoder
-from Zeus.RobotSide.Utils.beamBreak import BeamBreak
+from RobotSide.Utils.absoluteEncoder import absoluteEncoder
+from RobotSide.Utils.beamBreak import BeamBreak
 
 class FeederState(enum.Enum):
     SHOOTING = 1

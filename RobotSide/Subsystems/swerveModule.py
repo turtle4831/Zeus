@@ -1,5 +1,3 @@
-from wpimath.controller import PIDController
-
 from RobotSide.Utils.motor import Motor
 
 __all__ = ["SwerveModule"]

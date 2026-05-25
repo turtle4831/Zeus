@@ -1,5 +1,14 @@
-#smbus will always error, it is installed on the robot
-import smbus # type: ignore
+# smbus is installed on the robot, but not in most development/test environments.
+try:
+    import smbus  # type: ignore
+except ModuleNotFoundError:
+    from types import SimpleNamespace
+
+    class _MissingSmbus:
+        def __init__(self, *args, **kwargs):
+            raise ModuleNotFoundError("No module named 'smbus'")
+
+    smbus = SimpleNamespace(SMBus=_MissingSmbus)
 
 #each multiplexer has 8 channels
 

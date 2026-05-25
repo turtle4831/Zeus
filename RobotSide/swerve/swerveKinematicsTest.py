@@ -1,4 +1,4 @@
-from swerveKinematics import SwerveKinematics
+from RobotSide.swerve.swerveKinematics import SwerveKinematics
 
 
 swerveDrive = SwerveKinematics(10, 10)

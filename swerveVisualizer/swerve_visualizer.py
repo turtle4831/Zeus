@@ -24,6 +24,26 @@ ROBOT_WIDTH_METERS = 0.8
 MAX_LINEAR_SPEED = 3.0
 MAX_ANGULAR_SPEED = 180.0
 TIME_OF_FLIGHT = 0.5
+TARGET_RADIUS_PIXELS = 10
+TURRET_RADIUS_METERS = 0.18
+TURRET_BARREL_LENGTH_METERS = 0.55
+
+
+class SimulatedTurret:
+    def __init__(self, target_position: tuple[float, float]):
+        self.target_position = target_position
+
+    def set_target_position(self, target_position: tuple[float, float]):
+        self.target_position = target_position
+
+    def aim_angle(self, robot_position: tuple[float, float]):
+        dx = self.target_position[0] - robot_position[0]
+        dy = self.target_position[1] - robot_position[1]
+
+        if dx == 0 and dy == 0:
+            return 0.0
+
+        return math.degrees(math.atan2(dy, dx))
 
 
 class SwerveVisualizer(QWidget):
@@ -36,6 +56,8 @@ class SwerveVisualizer(QWidget):
         self.controller_available = self.controller.start()
 
         self.pose = [FIELD_SIZE_METERS / 2, FIELD_SIZE_METERS / 2, 0.0]
+        self.turret = SimulatedTurret((FIELD_SIZE_METERS * 0.75, FIELD_SIZE_METERS * 0.5))
+        self.dragging_target = False
         self.velocity = (0.0, 0.0)
         self.module_states = [(0.0, 0.0)] * 4
         self.keys_pressed: set[int] = set()
@@ -73,6 +95,7 @@ class SwerveVisualizer(QWidget):
             f"Controller: {self.controller.backend if self.controller_available else 'keyboard fallback'} | "
             f"Pose: x={self.pose[0]:.2f} y={self.pose[1]:.2f} heading={self.pose[2]:.1f} | "
             f"Velocity: vx={field_vx:.2f} vy={field_vy:.2f} | Ghost TOF={TIME_OF_FLIGHT:.1f}s"
+            f" | Drag target to aim turret"
         )
         self.status.adjustSize()
         self.update()
@@ -98,6 +121,9 @@ class SwerveVisualizer(QWidget):
             self.pose[2],
         )
 
+        self._draw_target(painter)
+        self._draw_aim_line(painter, ghost_pose, QColor(80, 170, 255, 180), ghost=True)
+        self._draw_aim_line(painter, tuple(self.pose), QColor(255, 255, 255, 210), ghost=False)
         self._draw_robot(painter, ghost_pose, QColor(80, 170, 255, 90), QColor(80, 170, 255), ghost=True)
         self._draw_robot(painter, tuple(self.pose), QColor(240, 185, 60), QColor(255, 255, 255), ghost=False)
 
@@ -106,6 +132,19 @@ class SwerveVisualizer(QWidget):
 
     def keyReleaseEvent(self, event):
         self.keys_pressed.discard(event.key())
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.MouseButton.LeftButton and self._target_hit(event.position()):
+            self.dragging_target = True
+            self._move_target(event.position())
+
+    def mouseMoveEvent(self, event):
+        if self.dragging_target:
+            self._move_target(event.position())
+
+    def mouseReleaseEvent(self, event):
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.dragging_target = False
 
     def closeEvent(self, event):
         self.controller.stop()
@@ -151,6 +190,28 @@ class SwerveVisualizer(QWidget):
             painter.drawLine(QPointF(field.left() + offset, field.top()), QPointF(field.left() + offset, field.bottom()))
             painter.drawLine(QPointF(field.left(), field.top() + offset), QPointF(field.right(), field.top() + offset))
 
+    def _draw_target(self, painter):
+        center = self._to_screen(*self.turret.target_position)
+        painter.setPen(QPen(QColor(255, 255, 255), 2))
+        painter.setBrush(QBrush(QColor(235, 80, 80)))
+        painter.drawEllipse(center, TARGET_RADIUS_PIXELS, TARGET_RADIUS_PIXELS)
+
+        painter.setPen(QPen(QColor(255, 255, 255, 180), 1))
+        painter.drawLine(
+            QPointF(center.x() - TARGET_RADIUS_PIXELS * 1.5, center.y()),
+            QPointF(center.x() + TARGET_RADIUS_PIXELS * 1.5, center.y()),
+        )
+        painter.drawLine(
+            QPointF(center.x(), center.y() - TARGET_RADIUS_PIXELS * 1.5),
+            QPointF(center.x(), center.y() + TARGET_RADIUS_PIXELS * 1.5),
+        )
+
+    def _draw_aim_line(self, painter, pose, color, ghost=False):
+        robot_center = self._to_screen(pose[0], pose[1])
+        target_center = self._to_screen(*self.turret.target_position)
+        painter.setPen(QPen(color, 2, Qt.PenStyle.DotLine if ghost else Qt.PenStyle.SolidLine))
+        painter.drawLine(robot_center, target_center)
+
     def _draw_robot(self, painter, pose, fill_color, pen_color, ghost=False):
         x, y, heading = pose
         center = self._to_screen(x, y)
@@ -173,14 +234,36 @@ class SwerveVisualizer(QWidget):
         heading_end = self._rotate_point(half_length, 0, heading_rad, center)
         painter.drawLine(center, heading_end)
 
+        self._draw_turret(painter, pose, center, scale, ghost)
+
         if not ghost:
             self._draw_modules(painter, center, heading_rad, scale)
 
+    def _draw_turret(self, painter, pose, center, scale, ghost=False):
+        turret_angle = math.radians(self.turret.aim_angle((pose[0], pose[1])))
+        radius = TURRET_RADIUS_METERS * scale
+        barrel_length = TURRET_BARREL_LENGTH_METERS * scale
+        barrel_end = self._rotate_point(barrel_length, 0, -turret_angle, center)
+
+        turret_color = QColor(80, 170, 255, 170) if ghost else QColor(45, 45, 45)
+        barrel_color = QColor(80, 170, 255, 220) if ghost else QColor(20, 20, 20)
+
+        painter.setPen(QPen(barrel_color, 4, Qt.PenStyle.DashLine if ghost else Qt.PenStyle.SolidLine))
+        painter.drawLine(center, barrel_end)
+        painter.setPen(QPen(QColor(255, 255, 255, 180), 1))
+        painter.setBrush(QBrush(turret_color))
+        painter.drawEllipse(center, radius, radius)
+
+    def _module_wheel_angle_rad(self, heading_deg: float, module_angle_deg: float) -> float:
+        """Convert robot-frame module angle to screen rotation (field y-up, Qt y-down)."""
+        return math.radians(heading_deg) - math.radians(module_angle_deg)
+
     def _draw_modules(self, painter, center, heading_rad, scale):
         painter.setPen(QPen(QColor(20, 20, 20), 4))
+        heading_deg = math.degrees(heading_rad)
         for (module_x, module_y), (speed, angle) in zip(self.kinematics.moduleLocations, self.module_states):
             module_center = self._rotate_point(module_x * scale, -module_y * scale, heading_rad, center)
-            wheel_angle = heading_rad + math.radians(angle)
+            wheel_angle = self._module_wheel_angle_rad(heading_deg, angle)
             length = 0.25 * scale * (0.5 + min(abs(speed) / MAX_LINEAR_SPEED, 1.0))
             start = self._rotate_point(-length / 2, 0, wheel_angle, module_center)
             end = self._rotate_point(length / 2, 0, wheel_angle, module_center)
@@ -192,6 +275,24 @@ class SwerveVisualizer(QWidget):
             field.left() + x / FIELD_SIZE_METERS * field.width(),
             field.bottom() - y / FIELD_SIZE_METERS * field.height(),
         )
+
+    def _from_screen(self, point):
+        field = self._field_rect()
+        x = (point.x() - field.left()) / field.width() * FIELD_SIZE_METERS
+        y = (field.bottom() - point.y()) / field.height() * FIELD_SIZE_METERS
+        return (
+            self._clamp(x, 0, FIELD_SIZE_METERS),
+            self._clamp(y, 0, FIELD_SIZE_METERS),
+        )
+
+    def _target_hit(self, point):
+        target = self._to_screen(*self.turret.target_position)
+        distance = math.hypot(point.x() - target.x(), point.y() - target.y())
+        return distance <= TARGET_RADIUS_PIXELS * 1.8
+
+    def _move_target(self, point):
+        self.turret.set_target_position(self._from_screen(point))
+        self.update()
 
     def _rotate_point(self, x, y, angle, center):
         return QPointF(

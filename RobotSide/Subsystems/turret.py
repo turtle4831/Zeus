@@ -1,10 +1,9 @@
 import enum
 import math
 
-from wpimath.controller import PIDController
-
 from RobotSide.Utils.absoluteEncoder import absoluteEncoder
 from RobotSide.Utils.motor import Motor, pidTypes
+from RobotSide.Utils.pid import PIDController
 
 class TurretState(enum.Enum):
     IDLE = 1

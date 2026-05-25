@@ -1,9 +1,9 @@
 import enum
 
-from wpimath.controller import PIDController
+from RobotSide.Utils.pid import PIDController
 from RobotSide.Utils.motor import Motor, pidTypes
-from Zeus.RobotSide.Utils.absoluteEncoder import absoluteEncoder
-from Zeus.RobotSide.Utils.servo import servo
+from RobotSide.Utils.absoluteEncoder import absoluteEncoder
+from RobotSide.Utils.servo import servo
 
 class IntakeState(enum.Enum):
     INTAKE = 1
