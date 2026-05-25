@@ -1,5 +1,7 @@
 import enum
 
+from wpimath.controller import PIDController
+
 from Zeus.RobotSide.Subsystems.feeder import Feeder, FeederState
 from Zeus.RobotSide.Subsystems.intake import Intake, IntakeState
 from Zeus.RobotSide.Subsystems.multiplexer import Multiplexer
@@ -31,9 +33,9 @@ class StateMachine:
     multiplexer2 = Multiplexer(HardwareConfig.MULTIPLEXER2_ID)
     turretEncoder = absoluteEncoder(HardwareConfig.TURRET_ENCODER_ID, multiplexer1)
     turret = Turret(HardwareConfig.TURRET_MOTOR_ID, turretEncoder, 180)
-    feeder = Feeder(HardwareConfig.FEEDER_MOTOR_ID, absoluteEncoder(HardwareConfig.MULTIPLEXER1_ID, multiplexer1), BeamBreak(HardwareConfig.FRONT_BEAM_BREAK_ID), BeamBreak(HardwareConfig.MIDDLE_BEAM_BREAK_ID), BeamBreak(HardwareConfig.BACK_BEAM_BREAK_ID))
-    intake = Intake(HardwareConfig.INTAKE_MOTOR_ID, absoluteEncoder(HardwareConfig.MULTIPLEXER1_ID, multiplexer1), HardwareConfig.INTAKE_PIVOT_SERVO_ID)
-    shooter = Shooter(HardwareConfig.SHOOTER_MOTOR_ID, absoluteEncoder(HardwareConfig.MULTIPLEXER1_ID, multiplexer1), HardwareConfig.HOOD_MOTOR_ID, absoluteEncoder(HardwareConfig.MULTIPLEXER1_ID, multiplexer1), speedTolerance=0.05)
+    feeder = Feeder(HardwareConfig.FEEDER_MOTOR_ID, absoluteEncoder(HardwareConfig.FEEDER_ENCODER_ID, multiplexer1), BeamBreak(HardwareConfig.FRONT_BEAM_BREAK_ID), BeamBreak(HardwareConfig.BACK_BEAM_BREAK_ID))
+    intake = Intake(HardwareConfig.INTAKE_MOTOR_ID, absoluteEncoder(HardwareConfig.INTAKE_ENCODER_ID, multiplexer1), HardwareConfig.INTAKE_PIVOT_SERVO_ID)
+    shooter = Shooter(HardwareConfig.SHOOTER_MOTOR_ID, absoluteEncoder(HardwareConfig.SHOOTER_ENCODER_ID, multiplexer1), HardwareConfig.HOOD_MOTOR_ID, absoluteEncoder(HardwareConfig.HOOD_ENCODER_ID, multiplexer1), speedTolerance=0.05)
     
     frontLeftDriveEncoder = absoluteEncoder(HardwareConfig.FRONT_LEFT_DRIVE_ENCODER_ID, multiplexer1)
     frontLeftTurnEncoder = absoluteEncoder(HardwareConfig.FRONT_LEFT_TURN_ENCODER_ID, multiplexer1)
@@ -44,14 +46,24 @@ class StateMachine:
     backRightDriveEncoder = absoluteEncoder(HardwareConfig.BACK_RIGHT_DRIVE_ENCODER_ID, multiplexer1)
     backRightTurnEncoder = absoluteEncoder(HardwareConfig.BACK_RIGHT_TURN_ENCODER_ID, multiplexer1)
 
-    frontLeftDriveMotor = Motor(HardwareConfig.FRONT_LEFT_DRIVE_MOTOR_ID, frontLeftDriveEncoder, None, pidTypes.VELOCITY)
-    frontLeftTurnMotor = Motor(HardwareConfig.FRONT_LEFT_TURN_MOTOR_ID, frontLeftTurnEncoder, None, pidTypes.POSITION)
-    frontRightDriveMotor = Motor(HardwareConfig.FRONT_RIGHT_DRIVE_MOTOR_ID, frontRightDriveEncoder, None, pidTypes.VELOCITY)
-    frontRightTurnMotor = Motor(HardwareConfig.FRONT_RIGHT_TURN_MOTOR_ID, frontRightTurnEncoder, None, pidTypes.POSITION)
-    backLeftDriveMotor = Motor(HardwareConfig.BACK_LEFT_DRIVE_MOTOR_ID, backLeftDriveEncoder, None, pidTypes.VELOCITY)
-    backLeftTurnMotor = Motor(HardwareConfig.BACK_LEFT_TURN_MOTOR_ID, backLeftTurnEncoder, None, pidTypes.POSITION)
-    backRightDriveMotor = Motor(HardwareConfig.BACK_RIGHT_DRIVE_MOTOR_ID, backRightDriveEncoder, None, pidTypes.VELOCITY)
-    backRightTurnMotor = Motor(HardwareConfig.BACK_RIGHT_TURN_MOTOR_ID, backRightTurnEncoder, None, pidTypes.POSITION)
+    #swerve pid contorollers
+    frontLeftDrivePIDController = PIDController(1,0,0)
+    frontLeftTurnPIDController = PIDController(1,0,0)
+    frontRightDrivePIDController = PIDController(1,0,0)
+    frontRightTurnPIDController = PIDController(1,0,0)
+    backLeftDrivePIDController = PIDController(1,0,0)
+    backLeftTurnPIDController = PIDController(1,0,0)
+    backRightDrivePIDController = PIDController(1,0,0)
+    backRightTurnPIDController = PIDController(1,0,0)
+    
+    frontLeftDriveMotor = Motor(HardwareConfig.FRONT_LEFT_DRIVE_MOTOR_ID, frontLeftDriveEncoder, frontLeftDrivePIDController, pidTypes.VELOCITY)
+    frontLeftTurnMotor = Motor(HardwareConfig.FRONT_LEFT_TURN_MOTOR_ID, frontLeftTurnEncoder, frontLeftTurnPIDController, pidTypes.POSITION)
+    frontRightDriveMotor = Motor(HardwareConfig.FRONT_RIGHT_DRIVE_MOTOR_ID, frontRightDriveEncoder, frontRightDrivePIDController, pidTypes.VELOCITY)
+    frontRightTurnMotor = Motor(HardwareConfig.FRONT_RIGHT_TURN_MOTOR_ID, frontRightTurnEncoder, frontRightTurnPIDController, pidTypes.POSITION)
+    backLeftDriveMotor = Motor(HardwareConfig.BACK_LEFT_DRIVE_MOTOR_ID, backLeftDriveEncoder, backLeftDrivePIDController, pidTypes.VELOCITY)
+    backLeftTurnMotor = Motor(HardwareConfig.BACK_LEFT_TURN_MOTOR_ID, backLeftTurnEncoder, backLeftTurnPIDController, pidTypes.POSITION)
+    backRightDriveMotor = Motor(HardwareConfig.BACK_RIGHT_DRIVE_MOTOR_ID, backRightDriveEncoder, backRightDrivePIDController, pidTypes.VELOCITY)
+    backRightTurnMotor = Motor(HardwareConfig.BACK_RIGHT_TURN_MOTOR_ID, backRightTurnEncoder, backRightTurnPIDController, pidTypes.POSITION)
     
     frontLeftModule = SwerveModule(frontLeftDriveMotor, frontLeftTurnMotor);
     frontRightModule = SwerveModule(frontRightDriveMotor, frontRightTurnMotor);

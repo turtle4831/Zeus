@@ -11,7 +11,7 @@ class FeederState(enum.Enum):
     STOP = 4
 
 class Feeder:
-    def __init__(self, FeederMotorId:int, encoder:absoluteEncoder, frontBeamBreak:BeamBreak,middleBeamBreak:BeamBreak, backBeamBreak:BeamBreak):
+    def __init__(self, FeederMotorId:int, encoder:absoluteEncoder, frontBeamBreak:BeamBreak,backBeamBreak:BeamBreak):
 
         self.state = FeederState.STOP
 
@@ -19,7 +19,6 @@ class Feeder:
         self.motor = Motor(FeederMotorId, encoder, self.velocityController, pidType=pidTypes.VELOCITY)
 
         self.frontBeamBreak = frontBeamBreak
-        self.middleBeamBreak = middleBeamBreak
         self.backBeamBreak = backBeamBreak
 
     def setSpeed(self, speed):
@@ -36,8 +35,7 @@ class Feeder:
     
     def isBackBeamBreakInterrupted(self):
         return self.backBeamBreak.isInterrupted()
-    def isMiddleBeamBreakInterrupted(self):
-        return self.middleBeamBreak.isInterrupted()
+
 
     def getBallCount(self):
         return self.ballCount
@@ -47,7 +45,7 @@ class Feeder:
         self.ballCount = 0
         
     def update(self):
-        self.ballCount = int(self.isFrontBeamBreakInterrupted()) + int(self.isBackBeamBreakInterrupted()) + int(self.isMiddleBeamBreakInterrupted())
+        self.ballCount = int(self.isFrontBeamBreakInterrupted()) + int(self.isBackBeamBreakInterrupted())
 
         match (self.state):
             case FeederState.SHOOTING:

@@ -1,7 +1,7 @@
 import enum
 import math
 from wpimath.controller import PIDController
-from RobotSide.Utils.motor import Motor, pidTypes
+from Zeus.RobotSide.Utils.motor import Motor, pidTypes
 from Zeus.RobotSide.Utils.absoluteEncoder import absoluteEncoder
 
 class ShooterState(enum.Enum):
@@ -24,7 +24,7 @@ class Shooter:
 
     def setSpeed(self, speed):
         self.targetSpeed = speed
-        self.shooterMotor.setSpeed(speed)
+        self.shooterMotor.update(self.targetSpeed)
 
     def getSpeed(self):
         return self.shooterMotor.getSpeed()
@@ -34,10 +34,13 @@ class Shooter:
         return speedDifference <= self.speedTolerance or math.isclose(speedDifference, self.speedTolerance)
 
     def setHoodPosition(self, position):
-        self.hoodMotor.setPosition(position)
+        self.hoodMotor.update(position)
 
     def getHoodPosition(self):
         return self.hoodMotor.getPosition()
+
+    def setState(self, state):
+        self.state = state
 
     def update(self):
         #implement shooter kinematics

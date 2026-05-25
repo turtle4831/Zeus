@@ -33,8 +33,11 @@ class Intake:
     def getPivotPosition(self):
         return self.servo.getPosition()
 
-    def changeState(self, state):
+    def setState(self, state):
         self.state = state
+
+    def changeState(self, state):
+        self.setState(state)
 
     def update(self):
         match (self.state):

@@ -1,8 +1,15 @@
+# pyright: reportArgumentType=false, reportAttributeAccessIssue=false
+
 import sys
 import types
 from pathlib import Path
+from typing import Any, cast
 
 import pytest
+
+from RobotSide.Utils.absoluteEncoder import absoluteEncoder
+from RobotSide.Utils.beamBreak import BeamBreak
+from RobotSide.Utils.motor import Motor, pidTypes
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -12,33 +19,58 @@ sys.path.insert(0, str(PROJECT_ROOT))
 sys.path.insert(0, str(ZEUS_ROOT))
 
 
+def fake_encoder(position: float = 0) -> absoluteEncoder:
+    return cast(absoluteEncoder, FakeEncoder(position))
+
+
+def fake_beam_break(interrupted: bool = False) -> BeamBreak:
+    return cast(BeamBreak, FakeBeamBreak(interrupted))
+
+
+def as_fake_motor(motor: Motor) -> "FakeMotor":
+    return cast(FakeMotor, motor)
+
+
 class FakeMotor:
-    instances = []
+    instances: list["FakeMotor"] = []
 
     def __init__(self, pin, encoder=None, pidController=None, pidType=None):
         self.pin = pin
         self.encoder = encoder
         self.pidController = pidController
         self.pidType = pidType
-        self.speed = 0
-        self.update_calls = []
-        self.position = 0
+        self.speed = 0.0
+        self.velocity = 0.0
+        self.update_calls: list[float] = []
+        self.position = 0.0
         FakeMotor.instances.append(self)
 
-    def setSpeed(self, speed):
+    def setSpeed(self, speed: float):
         self.speed = speed
+        self.velocity = speed
 
-    def getSpeed(self):
+    def getSpeed(self) -> float:
         return self.speed
 
-    def update(self, setpoint):
-        self.update_calls.append(setpoint)
-        self.position = setpoint
+    def _uses_velocity_control(self) -> bool:
+        if self.pidType is None:
+            return False
 
-    def setPosition(self, position):
+        pid_value = getattr(self.pidType, "value", self.pidType)
+        return pid_value == pidTypes.VELOCITY.value
+
+    def update(self, setpoint: float):
+        self.update_calls.append(setpoint)
+        if self._uses_velocity_control():
+            self.speed = float(setpoint)
+            self.velocity = float(setpoint)
+        else:
+            self.position = setpoint
+
+    def setPosition(self, position: float):
         self.position = position
 
-    def getPosition(self):
+    def getPosition(self) -> float:
         return self.position
 
 
@@ -60,11 +92,18 @@ class FakeServo:
 
 
 class FakeEncoder:
-    def __init__(self, position=0):
+    def __init__(self, position: float = 0):
         self.position = position
+        self.total_position = position
 
-    def getPosition(self):
+    def getPosition(self) -> float:
         return self.position
+
+    def getTotalPosition(self) -> float:
+        return self.total_position
+
+    def updatePosition(self):
+        pass
 
 
 class FakeBeamBreak:
@@ -86,7 +125,7 @@ def test_feeder_updates_motor_for_each_state(monkeypatch):
 
     monkeypatch.setattr(feeder, "Motor", FakeMotor)
 
-    subsystem = feeder.Feeder(1, FakeEncoder(), FakeBeamBreak(), FakeBeamBreak(), FakeBeamBreak())
+    subsystem = feeder.Feeder(1, fake_encoder(), fake_beam_break(), fake_beam_break())
     assert subsystem.state == feeder.FeederState.STOP
     assert FakeMotor.instances[0].pidType == feeder.pidTypes.VELOCITY
 
@@ -97,7 +136,7 @@ def test_feeder_updates_motor_for_each_state(monkeypatch):
     subsystem.state = feeder.FeederState.STOP
     subsystem.update()
 
-    assert subsystem.motor.update_calls == [1, -0.5, 0]
+    assert as_fake_motor(subsystem.motor).update_calls == [1, -0.5, 0]
 
 
 def test_feeder_stops_and_raises_for_invalid_state(monkeypatch):
@@ -105,13 +144,33 @@ def test_feeder_stops_and_raises_for_invalid_state(monkeypatch):
 
     monkeypatch.setattr(feeder, "Motor", FakeMotor)
 
-    subsystem = feeder.Feeder(1, FakeEncoder(), FakeBeamBreak(), FakeBeamBreak(), FakeBeamBreak())
+    subsystem = feeder.Feeder(1, fake_encoder(), fake_beam_break(), fake_beam_break())
     subsystem.state = "bad"
 
     with pytest.raises(ValueError):
         subsystem.update()
 
-    assert subsystem.motor.speed == 0
+    assert as_fake_motor(subsystem.motor).speed == 0
+
+
+def test_feeder_counts_front_and_back_beam_breaks(monkeypatch):
+    from RobotSide.Subsystems import feeder
+
+    monkeypatch.setattr(feeder, "Motor", FakeMotor)
+
+    subsystem = feeder.Feeder(
+        1,
+        fake_encoder(),
+        fake_beam_break(interrupted=True),
+        fake_beam_break(interrupted=False),
+    )
+
+    subsystem.update()
+    assert subsystem.getBallCount() == 1
+
+    subsystem.backBeamBreak.interrupted = True
+    subsystem.update()
+    assert subsystem.getBallCount() == 2
 
 
 def test_intake_controls_motor_and_pivot_servo(monkeypatch):
@@ -120,7 +179,7 @@ def test_intake_controls_motor_and_pivot_servo(monkeypatch):
     monkeypatch.setattr(intake, "Motor", FakeMotor)
     monkeypatch.setattr(intake, "servo", FakeServo)
 
-    subsystem = intake.Intake(2, FakeEncoder(), 3)
+    subsystem = intake.Intake(2, fake_encoder(), 3)
 
     subsystem.setSpeed(0.25)
     assert subsystem.getSpeed() == 0.25
@@ -128,22 +187,24 @@ def test_intake_controls_motor_and_pivot_servo(monkeypatch):
     subsystem.setPivotPosition(45)
     assert subsystem.getPivotPosition() == 45
 
-    subsystem.changeState(intake.IntakeState.INTAKE)
+    subsystem.setState(intake.IntakeState.INTAKE)
     subsystem.update()
-    assert subsystem.motor.speed == 1
-    assert subsystem.servo.position == 0
+    motor = as_fake_motor(subsystem.motor)
+    servo = cast(FakeServo, subsystem.servo)
+    assert motor.speed == 1
+    assert servo.position == 0
 
     subsystem.changeState(intake.IntakeState.OUTTAKE)
     subsystem.update()
-    assert subsystem.motor.speed == -1
+    assert motor.speed == -1
 
     subsystem.changeState(intake.IntakeState.STOP)
     subsystem.update()
-    assert subsystem.motor.speed == 0
+    assert motor.speed == 0
 
     subsystem.changeState(intake.IntakeState.PIVOT_UP)
     subsystem.update()
-    assert subsystem.servo.position == 90
+    assert servo.position == 90
 
 
 def test_intake_stops_and_raises_for_invalid_state(monkeypatch):
@@ -152,13 +213,13 @@ def test_intake_stops_and_raises_for_invalid_state(monkeypatch):
     monkeypatch.setattr(intake, "Motor", FakeMotor)
     monkeypatch.setattr(intake, "servo", FakeServo)
 
-    subsystem = intake.Intake(2, FakeEncoder(), 3)
+    subsystem = intake.Intake(2, fake_encoder(), 3)
     subsystem.state = "bad"
 
     with pytest.raises(ValueError):
         subsystem.update()
 
-    assert subsystem.motor.speed == 0
+    assert as_fake_motor(subsystem.motor).speed == 0
 
 
 def test_shooter_delegates_to_shooter_and_hood_motors(monkeypatch):
@@ -166,37 +227,42 @@ def test_shooter_delegates_to_shooter_and_hood_motors(monkeypatch):
 
     monkeypatch.setattr(shooter, "Motor", FakeMotor)
 
-    shooter_encoder = FakeEncoder(100)
-    hood_encoder = FakeEncoder(25)
-    subsystem = shooter.Shooter(4, shooter_encoder, 5, hood_encoder)
+    subsystem = shooter.Shooter(4, fake_encoder(100), 5, fake_encoder(25))
 
     assert subsystem.state == shooter.ShooterState.STOP
-    assert subsystem.shooterMotor.pidType == shooter.pidTypes.VELOCITY
-    assert subsystem.hoodMotor.pidType == shooter.pidTypes.POSITION
+    shooter_motor = as_fake_motor(subsystem.shooterMotor)
+    hood_motor = as_fake_motor(subsystem.hoodMotor)
+    assert shooter_motor.pidType == shooter.pidTypes.VELOCITY
+    assert hood_motor.pidType == shooter.pidTypes.POSITION
 
     subsystem.setSpeed(0.75)
+    assert shooter_motor.update_calls == [0.75]
     assert subsystem.getSpeed() == 0.75
     assert subsystem.atSpeed() is True
 
-    subsystem.shooterMotor.speed = 0.69
+    shooter_motor.speed = 0.69
     assert subsystem.atSpeed() is False
 
-    subsystem.shooterMotor.speed = 0.70
+    shooter_motor.speed = 0.70
     assert subsystem.atSpeed() is True
 
     subsystem.setHoodPosition(30)
-    assert subsystem.hoodMotor.position == 30
+    assert hood_motor.update_calls == [30]
+    assert hood_motor.position == 30
     assert subsystem.getHoodPosition() == 30
+
+    subsystem.setState(shooter.ShooterState.PRE_SHOOTING)
+    assert subsystem.state == shooter.ShooterState.PRE_SHOOTING
 
     assert subsystem.update() is None
 
 
 def test_swerve_module_sets_drive_and_turn_state():
-    from RobotSide.Subsystems.swerveModule import Swerve
+    from RobotSide.Subsystems.swerveModule import SwerveModule
 
     drive_motor = FakeMotor(6)
     turn_motor = FakeMotor(7)
-    module = Swerve(drive_motor, turn_motor)
+    module = SwerveModule(cast(Motor, drive_motor), cast(Motor, turn_motor))
 
     module.setState(3, 90)
 
@@ -243,6 +309,11 @@ def test_swerve_drives_modules_and_tracks_pose(monkeypatch):
     modules = [FakeSwerveModule() for _ in range(4)]
 
     subsystem = swerve.Swerve(*modules)
+    assert subsystem.state == swerve.SwerveState.STOP
+
+    subsystem.setState(swerve.SwerveState.DRIVING)
+    assert subsystem.state == swerve.SwerveState.DRIVING
+
     subsystem.drive(1, 2, 3)
 
     assert [module.calls[-1] for module in modules] == [(1, 10), (2, 20), (3, 30), (4, 40)]
@@ -252,7 +323,8 @@ def test_swerve_drives_modules_and_tracks_pose(monkeypatch):
     assert subsystem.getPose() == (subsystem.states, 180)
 
     subsystem.resetPose(1, 2, 90)
-    assert subsystem.kinematics.starting_pose == (1, 2, 90)
+    kinematics = cast(Any, subsystem.kinematics)
+    assert kinematics.starting_pose == (1, 2, 90)
 
 
 def test_multiplexer_selects_channels_and_reads_encoder_data(monkeypatch):
@@ -295,14 +367,18 @@ def test_turret_wraps_angles_and_updates_motor(monkeypatch):
 
     monkeypatch.setattr(turret, "Motor", FakeMotor)
 
-    encoder = FakeEncoder(200)
-    subsystem = turret.Turret(8, encoder, maxDegrees=180)
+    subsystem = turret.Turret(8, fake_encoder(200), maxDegrees=180)
+    assert subsystem.state == turret.TurretState.STOP
+
+    subsystem.setState(turret.TurretState.AIMING)
+    assert subsystem.state == turret.TurretState.AIMING
 
     subsystem.setTargetAngle(200)
     assert subsystem.getTargetAngle() == -160
 
     subsystem.update()
-    assert subsystem.motor.update_calls == [-160]
+    motor = as_fake_motor(subsystem.motor)
+    assert motor.update_calls == [-160]
 
     assert subsystem.getCurrentAngle() == -160
 
@@ -314,7 +390,7 @@ def test_turret_wraps_angles_and_updates_motor(monkeypatch):
     assert subsystem.getTargetAngle() == -80
 
     subsystem.stop()
-    assert subsystem.motor.speed == 0
+    assert motor.speed == 0
 
 
 def test_turret_aims_at_point(monkeypatch):
@@ -322,7 +398,7 @@ def test_turret_aims_at_point(monkeypatch):
 
     monkeypatch.setattr(turret, "Motor", FakeMotor)
 
-    subsystem = turret.Turret(8, FakeEncoder(), maxDegrees=180)
+    subsystem = turret.Turret(8, fake_encoder(), maxDegrees=180)
 
     subsystem.aimAtPoint([0.0, 0.0], [1.0, 0.0])
     assert subsystem.getTargetAngle() == 0
@@ -342,7 +418,7 @@ def test_turret_aim_at_point_uses_angle_wrapping(monkeypatch):
 
     monkeypatch.setattr(turret, "Motor", FakeMotor)
 
-    subsystem = turret.Turret(8, FakeEncoder(), maxDegrees=90)
+    subsystem = turret.Turret(8, fake_encoder(), maxDegrees=90)
     subsystem.aimAtPoint([0.0, 0.0], [-1.0, 0.0])
 
     assert subsystem.getTargetAngle() == 0
@@ -353,7 +429,7 @@ def test_turret_aim_at_point_rejects_invalid_points(monkeypatch):
 
     monkeypatch.setattr(turret, "Motor", FakeMotor)
 
-    subsystem = turret.Turret(8, FakeEncoder())
+    subsystem = turret.Turret(8, fake_encoder())
 
     with pytest.raises(ValueError, match="exactly two values"):
         subsystem.aimAtPoint([0.0], [1.0, 1.0])
@@ -368,4 +444,4 @@ def test_turret_rejects_invalid_max_degrees(monkeypatch):
     monkeypatch.setattr(turret, "Motor", FakeMotor)
 
     with pytest.raises(ValueError):
-        turret.Turret(8, FakeEncoder(), maxDegrees=0)
+        turret.Turret(8, fake_encoder(), maxDegrees=0)

@@ -27,3 +27,8 @@ requires = []
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"
+
+[tool.pyright]
+venvPath = "."
+venv = ".venv"
+extraPaths = ["RobotSide"]

@@ -14,7 +14,10 @@ class Swerve:
         self.back_right = back_right
         self.modules = [self.front_left, self.front_right, self.back_left, self.back_right]
         self.kinematics = SwerveKinematics(wheelbase=10, trackwidth=10) # Adjust wheelbase and trackwidth as needed
+        self.state = SwerveState.STOP
 
+    def setState(self, state):
+        self.state = state
 
     def drive(self, yMovement, xMovement, Turn):
         speeds, angles = self.kinematics.normalize(self.kinematics.toSwerveModuleStates(yMovement, xMovement, Turn),maxSpeed=5)

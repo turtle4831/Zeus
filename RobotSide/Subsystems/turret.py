@@ -17,9 +17,13 @@ class Turret:
             raise ValueError("maxDegrees must be greater than 0")
 
         self.maxDegrees = maxDegrees
+        self.state = TurretState.STOP
         self.targetAngle = 0
         self.angleController = PIDController(1, 0, 0)
         self.motor = Motor(TurretMotorId, encoder, self.angleController, pidType=pidTypes.POSITION)
+
+    def setState(self, state):
+        self.state = state
 
     def setTargetAngle(self, angle: float):
         self.targetAngle = self._wrapAngle(angle)

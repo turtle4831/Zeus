@@ -29,6 +29,12 @@ class Motor():
 
     def getSpeed(self):
         return self.velocity
+
+    def getPosition(self):
+        if not self.encoderEnabled:
+            raise ValueError("Encoder not enabled for this motor")
+
+        return self.encoder.getPosition()
         
     def update(self, setpoint):
         if self.encoderEnabled:

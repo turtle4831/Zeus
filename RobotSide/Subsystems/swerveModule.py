@@ -2,8 +2,10 @@ from wpimath.controller import PIDController
 
 from RobotSide.Utils.motor import Motor
 
+__all__ = ["SwerveModule"]
 
-class Swerve:
+
+class SwerveModule:
     def __init__(self, drive_motor: Motor, turn_motor: Motor):
         self.drive_motor = drive_motor
         self.turn_motor = turn_motor
