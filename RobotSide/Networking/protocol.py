@@ -17,6 +17,7 @@ class MessageType(str, Enum):
 
 DEFAULT_PORT = 5800
 CONTROL_TIMEOUT_S = 0.25
+INITIALIZE_ESC_BUTTON = "initialize_esc"
 
 
 @dataclass

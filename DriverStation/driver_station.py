@@ -27,7 +27,12 @@ sys.path.insert(0, str(ZEUS_ROOT))
 
 from DriverStation.controller_input import ControllerInput
 from DriverStation.network_client import DriverStationClient
-from RobotSide.Networking.protocol import DEFAULT_PORT, TelemetryMessage
+from RobotSide.Networking.protocol import (
+    DEFAULT_PORT,
+    INITIALIZE_ESC_BUTTON,
+    ControlMessage,
+    TelemetryMessage,
+)
 
 
 class DriverStationWindow(QMainWindow):
@@ -44,6 +49,7 @@ class DriverStationWindow(QMainWindow):
         self._connected = False
         self._latest_telemetry: TelemetryMessage | None = None
         self._enabled = True
+        self._initialize_esc_requested = False
 
         self._build_ui()
         self._start_controller()
@@ -115,6 +121,10 @@ class DriverStationWindow(QMainWindow):
         self._enable_button.clicked.connect(self._toggle_enabled)
         layout.addWidget(self._enable_button)
 
+        self._initialize_esc_button = QPushButton("Initialize ESCs")
+        self._initialize_esc_button.clicked.connect(self._request_initialize_esc)
+        layout.addWidget(self._initialize_esc_button)
+
         self.statusBar().showMessage("Ready")
 
     def _start_controller(self) -> None:
@@ -171,8 +181,25 @@ class DriverStationWindow(QMainWindow):
         self._enabled = not self._enabled
         self._enable_button.setText("Disable Controls" if self._enabled else "Enable Controls")
 
+    def _request_initialize_esc(self) -> None:
+        self._initialize_esc_requested = True
+        self.statusBar().showMessage("ESC initialize requested (requires disabled controls on robot)")
+
     def _read_control(self):
-        return self._controller.read(enabled=self._enabled and self._connected)
+        control = self._controller.read(enabled=self._enabled and self._connected)
+        buttons = dict(control.buttons)
+        if self._initialize_esc_requested:
+            buttons[INITIALIZE_ESC_BUTTON] = True
+            self._initialize_esc_requested = False
+        return ControlMessage(
+            enabled=control.enabled,
+            lx=control.lx,
+            ly=control.ly,
+            rx=control.rx,
+            ry=control.ry,
+            buttons=buttons,
+            timestamp=control.timestamp,
+        )
 
     def _handle_telemetry(self, telemetry: TelemetryMessage) -> None:
         self.telemetry_received.emit(telemetry)

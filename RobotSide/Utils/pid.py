@@ -1,4 +1,8 @@
-from typing import Any
+from typing import Protocol
+
+
+class PIDControllerProtocol(Protocol):
+    def calculate(self, setpoint: float, measurement: float) -> float: ...
 
 
 class _FallbackPIDController:
@@ -9,7 +13,7 @@ class _FallbackPIDController:
         self._integral = 0.0
         self._previous_error = 0.0
 
-    def calculate(self, measurement: float, setpoint: float = 0.0) -> float:
+    def calculate(self, setpoint: float, measurement: float) -> float:
         error = setpoint - measurement
         self._integral += error
         derivative = error - self._previous_error
@@ -18,8 +22,6 @@ class _FallbackPIDController:
 
 
 try:
-    from wpimath.controller import PIDController as _RobotPyPIDController
+    from wpimath.controller import PIDController
 except ModuleNotFoundError:
-    _RobotPyPIDController = None
-
-PIDController: Any = _RobotPyPIDController or _FallbackPIDController
+    PIDController = _FallbackPIDController

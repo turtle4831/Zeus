@@ -1,10 +1,17 @@
 import enum
-try:
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
     from gpiozero import PWMOutputDevice
-except ModuleNotFoundError:
-    class PWMOutputDevice:
-        def __init__(self, *args, **kwargs):
-            raise ModuleNotFoundError("No module named 'gpiozero'")
+else:
+    try:
+        from gpiozero import PWMOutputDevice
+    except ModuleNotFoundError:
+        class PWMOutputDevice:
+            value = 0.0
+
+            def __init__(self, *args, **kwargs):
+                raise ModuleNotFoundError("No module named 'gpiozero'")
 
 import time
 from RobotSide.Utils.absoluteEncoder import absoluteEncoder
@@ -14,8 +21,46 @@ class pidTypes(enum.Enum):
     POSITION = 1
     VELOCITY = 2
 
+
+DEFAULT_ESC_STEPS: list[tuple[float, float]] = [
+    (1.0, 2.0),
+    (0.05, 2.0),
+    (0.0, 0.0),
+]
+
+
+class initializeESC:
+    """Parent class for per-motor ESC initialization routines."""
+
+    def run(self, motor: "Motor") -> None:
+        raise NotImplementedError
+
+
+class SteppedInitializeESC(initializeESC):
+    def __init__(self, steps: list[tuple[float, float]]):
+        self.steps = steps
+
+    def run(self, motor: "Motor") -> None:
+        for power, duration_s in self.steps:
+            motor.setSpeed(power)
+            if duration_s > 0:
+                time.sleep(duration_s)
+
+
+default_esc_initializer = SteppedInitializeESC(DEFAULT_ESC_STEPS)
+
+
 class Motor():
-    def __init__(self, pin, encoder: absoluteEncoder, pidController: PIDController | PIDController = PIDController(1,0,0), pidType:pidTypes = pidTypes.POSITION):
+    def __init__(
+        self,
+        pin,
+        encoder: absoluteEncoder,
+        pidController: Any = None,
+        pidType: pidTypes = pidTypes.POSITION,
+        esc_initializer: initializeESC | None = None,
+    ):
+        if pidController is None:
+            pidController = PIDController(1, 0, 0)
 
         self.encoder = encoder
         self.motor = PWMOutputDevice(pin,frequency=50)
@@ -23,6 +68,7 @@ class Motor():
         self.pidController = pidController
 
         self.pidType = pidType
+        self.esc_initializer = esc_initializer or default_esc_initializer
 
         self.timeElapsed = 0
         if self.encoder is not None:
@@ -63,11 +109,7 @@ class Motor():
             raise ValueError("Encoder not enabled for this motor")
 
     def initializeESC(self):
-        self.setSpeed(1.0)
-        time.sleep(2)
-        self.setSpeed(0.05)
-        time.sleep(2)
-        self.setSpeed(0.0)
+        self.esc_initializer.run(self)
     
 
     

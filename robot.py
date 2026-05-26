@@ -1,16 +1,26 @@
 import time
 
 from RobotSide.Networking.driver_station_server import DriverStationServer
-from RobotSide.Networking.protocol import TelemetryMessage
+from RobotSide.Networking.protocol import INITIALIZE_ESC_BUTTON, TelemetryMessage
 
 
 class Robot:
-    def __init__(self):
+    def __init__(self, state_machine=None):
         self.totalTime = 0
         self.robot_state = "idle"
         self.battery_voltage: float | None = None
         self.subsystem_states: dict[str, str] = {}
         self.driver_station = DriverStationServer()
+        self._state_machine = state_machine
+        self._initialize_esc_was_pressed = False
+
+    @property
+    def state_machine(self):
+        if self._state_machine is None:
+            from RobotSide.Subsystems.stateMachine import StateMachine
+
+            self._state_machine = StateMachine()
+        return self._state_machine
 
     def init(self):
         self.driver_station.start(telemetry_provider=self._build_telemetry)
@@ -19,6 +29,7 @@ class Robot:
         start = time.time()
 
         controls = self.driver_station.get_controls()
+        self._handle_initialize_esc(controls)
         if controls.enabled:
             self.robot_state = "teleop"
             self._apply_controls(controls)
@@ -29,6 +40,16 @@ class Robot:
 
         end = time.time()
         self.totalTime += end - start
+
+    def _handle_initialize_esc(self, controls) -> None:
+        initialize_pressed = controls.buttons.get(INITIALIZE_ESC_BUTTON, False)
+        if initialize_pressed and not self._initialize_esc_was_pressed:
+            if controls.enabled:
+                self.subsystem_states["esc_init"] = "rejected: controls enabled"
+            else:
+                self.state_machine.initialize_all_escs()
+                self.subsystem_states["esc_init"] = "completed"
+        self._initialize_esc_was_pressed = initialize_pressed
 
     def _apply_controls(self, controls) -> None:
         """Apply driver station controls to robot subsystems."""

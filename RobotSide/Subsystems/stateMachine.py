@@ -75,6 +75,26 @@ class StateMachine:
     blueTargetLocation = list((9.0,9.0))
     redTargetLocaiton = list((-9.0,-9.0))
 
+    def get_all_motors(self) -> list[Motor]:
+        return [
+            self.turret.motor,
+            self.feeder.motor,
+            self.intake.motor,
+            self.shooter.shooterMotor,
+            self.shooter.hoodMotor,
+            self.frontLeftDriveMotor,
+            self.frontLeftTurnMotor,
+            self.frontRightDriveMotor,
+            self.frontRightTurnMotor,
+            self.backLeftDriveMotor,
+            self.backLeftTurnMotor,
+            self.backRightDriveMotor,
+            self.backRightTurnMotor,
+        ]
+
+    def initialize_all_escs(self) -> None:
+        for motor in self.get_all_motors():
+            motor.initializeESC()
 
     def update(self, requestedStates:dict[str, str],redAlliance:bool, swerveRequest:list):
         stateRequests: dict[str, StateRequest] = {}

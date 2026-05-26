@@ -459,6 +459,46 @@ def test_turret_rejects_invalid_max_degrees(monkeypatch):
         turret.Turret(8, fake_encoder(), maxDegrees=0)
 
 
+def test_motor_initialize_esc_delegates_to_initializer(monkeypatch):
+    from RobotSide.Utils import motor as motor_module
+
+    calls = []
+
+    class FakeInit(motor_module.initializeESC):
+        def run(self, motor):
+            calls.append(motor)
+
+    class FakePWM:
+        value = 0.0
+
+        def __init__(self, *args, **kwargs):
+            pass
+
+    monkeypatch.setattr(motor_module, "PWMOutputDevice", FakePWM)
+
+    motor = motor_module.Motor(1, fake_encoder(), esc_initializer=FakeInit())
+    motor.initializeESC()
+    assert calls == [motor]
+
+
+def test_stepped_initialize_esc_applies_speed_steps(monkeypatch):
+    from RobotSide.Utils import motor as motor_module
+
+    class FakePWM:
+        value = 0.0
+
+        def __init__(self, *args, **kwargs):
+            pass
+
+    monkeypatch.setattr(motor_module, "PWMOutputDevice", FakePWM)
+    monkeypatch.setattr(motor_module.time, "sleep", lambda _: None)
+
+    initializer = motor_module.SteppedInitializeESC([(1.0, 0.1), (0.05, 0.1), (0.0, 0.0)])
+    motor = motor_module.Motor(1, fake_encoder(), esc_initializer=initializer)
+    motor.initializeESC()
+    assert motor.motor.value == 0.0
+
+
 def test_gyro_reads_and_resets_heading_from_sensor():
     from RobotSide.Utils.gyro import Gyro
 
